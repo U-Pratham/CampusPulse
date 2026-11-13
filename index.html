@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusPulse - Impact-Based Campus Issue Prioritization Platform</title>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Chart.js CDN for interactive visual analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar" id="appSidebar">
+      <!-- Brand Logo Header -->
+      <div class="brand-header">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">CampusPulse</h1>
+          <div class="brand-sub">Impact Engine Ops</div>
+        </div>
+      </div>
+
+      <!-- Role Switcher Control -->
+      <div class="role-switcher-card">
+        <div class="role-switcher-header">
+          <span>Active Persona</span>
+          <span id="roleLabelTag" style="color: var(--accent-cyan);">Student</span>
+        </div>
+        <div class="role-pills">
+          <button type="button" class="role-pill-btn active" id="btnRoleStudent" onclick="App.switchRole('student')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            Student
+          </button>
+          <button type="button" class="role-pill-btn" id="btnRoleAdmin" onclick="App.switchRole('admin')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Admin
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <!-- Student Section -->
+        <div id="studentNavSection">
+          <div class="nav-section-title">Student Portal</div>
+          <a class="nav-item active" data-view="student-overview" onclick="App.navigate('student-overview')">
+            <span class="nav-item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </span>
+            <span>Dashboard Overview</span>
+          </a>
+          <a class="nav-item" data-view="student-submit" onclick="App.navigate('student-submit')">
+            <span class="nav-item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </span>
+            <span>Report New Issue</span>
+          </a>
+          <a class="nav-item" data-view="student-reports" onclick="App.navigate('student-reports')">
+            <span class="nav-item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </span>
+            <span>Track by Impact</span>
+            <span class="nav-counter" id="navStudentCount">0</span>
+          </a>
+        </div>
+
+        <!-- Admin Section -->
+        <div id="adminNavSection" style="display: none;">
+          <div class="nav-section-title">Facility Administration</div>
+          <a class="nav-item" data-view="admin-dashboard" onclick="App.navigate('admin-dashboard')">
+            <span class="nav-item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            </span>
+            <span>Impact Operations Desk</span>
+            <span class="nav-counter" id="navAdminPendingCount">0</span>
+          </a>
+          <a class="nav-item" data-view="admin-analytics" onclick="App.navigate('admin-analytics')">
+            <span class="nav-item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </span>
+            <span>Impact Analytics & SLAs</span>
+          </a>
+          <a class="nav-item" data-view="admin-staff" onclick="App.navigate('admin-staff')">
+            <span class="nav-item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span>Maintenance Staff</span>
+          </a>
+        </div>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="system-badge">
+          <span class="pulse-dot"></span>
+          <span>Impact Engine Active</span>
+        </div>
+        <button type="button" class="reset-demo-btn" onclick="App.handleResetDemo()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Reset Demo Data
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <!-- Top Sticky Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <button type="button" class="mobile-nav-toggle" onclick="App.toggleSidebar()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="header-title-wrap">
+            <div class="header-title" id="pageTitle">Dashboard Overview</div>
+            <div class="header-breadcrumb" id="pageBreadcrumb">Student Portal / Overview</div>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="role-badge-indicator" id="roleBadgeTop">
+            <span class="pulse-dot"></span>
+            <span id="roleBadgeText">Student Mode</span>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="App.toggleRole()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+            <span id="btnQuickSwitchText">Switch to Admin</span>
+          </button>
+          <div class="user-profile-btn">
+            <div class="avatar-circle" id="userAvatar">ST</div>
+            <div class="user-details">
+              <div class="user-name" id="userNameLabel">Aarav Sharma</div>
+              <div class="user-role-label" id="userRoleSub">CS Dept • Room 204</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- View Container (SPA Views) -->
+      <div class="views-container">
+        
+        <!-- 1. STUDENT OVERVIEW VIEW -->
+        <section class="page-view active" id="view-student-overview">
+          <div class="view-header">
+            <div class="view-header-text">
+              <h2>Student Service Desk</h2>
+              <p>Ranked by actual campus impact. Transparent, multi-factor prioritization ensuring critical issues are resolved first.</p>
+            </div>
+            <button class="btn btn-primary" onclick="App.navigate('student-submit')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Report New Issue
+            </button>
+          </div>
+
+          <!-- Hazard Alert Banner if high priority issues active -->
+          <div id="hazardAlertBanner" class="alert-banner" style="display: none;">
+            <div class="alert-content">
+              <span class="alert-badge">
+                <span class="emergency-beacon"></span>
+                Emergency Override Active
+              </span>
+              <span id="hazardAlertText">Safety Hazard in Engineering Workshop Machine Lab 2 pinned to Rank #1 (Score: 100/100).</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="App.openScoreExplanationModal('CP-101')">View Score Breakdown</button>
+          </div>
+
+          <!-- KPI Metrics Row -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Campus Tickets</span>
+                <div class="kpi-icon-wrap" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">📊</div>
+              </div>
+              <div class="kpi-val" id="kpi-total-tickets">0</div>
+              <div class="kpi-sub">Total issues logged across blocks</div>
+            </div>
+
+            <div class="kpi-card pending">
+              <div class="kpi-header">
+                <span class="kpi-title">Pending Action</span>
+                <div class="kpi-icon-wrap" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">⏳</div>
+              </div>
+              <div class="kpi-val" id="kpi-pending-tickets">0</div>
+              <div class="kpi-sub">Ranked by weighted impact score</div>
+            </div>
+
+            <div class="kpi-card progress">
+              <div class="kpi-header">
+                <span class="kpi-title">In Progress</span>
+                <div class="kpi-icon-wrap" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">🔧</div>
+              </div>
+              <div class="kpi-val" id="kpi-inprogress-tickets">0</div>
+              <div class="kpi-sub">Active field crew deployments</div>
+            </div>
+
+            <div class="kpi-card hazard">
+              <div class="kpi-header">
+                <span class="kpi-title">Critical & P0 Hazards</span>
+                <div class="kpi-icon-wrap" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">🚨</div>
+              </div>
+              <div class="kpi-val" id="kpi-emergencies-count">1</div>
+              <div class="kpi-sub">Safety overrides bypassed to Top</div>
+            </div>
+          </div>
+
+          <!-- Student Recent Activity Card -->
+          <div class="table-card">
+            <div class="table-toolbar">
+              <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                <span>Prioritized Campus Issues</span>
+                <span class="engine-pill">Ranked by Impact</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="App.navigate('student-reports')">View All & Track</button>
+            </div>
+            <div id="studentRecentList" class="table-responsive">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </section>
+
+
+        <!-- 2. STUDENT SUBMIT ISSUE VIEW -->
+        <section class="page-view" id="view-student-submit">
+          <div class="view-header">
+            <div class="view-header-text">
+              <h2>Submit Issue Report</h2>
+              <p>Enter details. CampusPulse's Impact Engine computes severity, location importance, and affected headcount in real-time.</p>
+            </div>
+            <button class="btn btn-secondary" onclick="App.navigate('student-overview')">Back to Overview</button>
+          </div>
+
+          <!-- Real-time Duplicate Detection Banner -->
+          <div id="duplicateAlertBox" class="duplicate-alert-box">
+            <div class="dup-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Duplicate Complaint Detected (Proximity & Description Match)</span>
+            </div>
+            <div class="dup-details" id="duplicateDetailsText">
+              A similar unresolved complaint already exists for this exact location.
+            </div>
+            <div class="dup-ticket-card" id="duplicateTicketCard">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Submission Form Grid -->
+          <div class="form-card">
+            <form id="complaintForm" onsubmit="App.handleComplaintSubmit(event)">
+              <div class="form-grid-layout">
+                <!-- Left Column: Inputs -->
+                <div class="form-left-col">
+                  <!-- Title -->
+                  <div class="form-group">
+                    <label class="form-label" for="complaintTitle">
+                      Complaint Title <span class="req">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="complaintTitle" 
+                      class="form-control" 
+                      placeholder="e.g. Exposed switchboard sparking near CNC machine, or Severe pipe leak in hallway" 
+                      required
+                      autocomplete="off"
+                    >
+                    <div class="form-hint">Keywords trigger real-time severity scoring and emergency safety overrides.</div>
+                  </div>
+
+                  <!-- Location: Building & Room -->
+                  <div class="form-row-2">
+                    <div class="form-group">
+                      <label class="form-label" for="complaintBuilding">
+                        Building <span class="req">*</span>
+                      </label>
+                      <select id="complaintBuilding" class="form-control" required>
+                        <option value="">Select Campus Building...</option>
+                        <!-- Populated by JS -->
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label" for="complaintRoom">
+                        Classroom / Specific Room <span class="req">*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        id="complaintRoom" 
+                        class="form-control" 
+                        placeholder="e.g. Machine Lab 2, Hall B-12, Room 204" 
+                        required
+                      >
+                    </div>
+                  </div>
+
+                  <!-- Description -->
+                  <div class="form-group">
+                    <label class="form-label" for="complaintDescription">
+                      Detailed Description <span class="req">*</span>
+                    </label>
+                    <textarea 
+                      id="complaintDescription" 
+                      class="form-control" 
+                      rows="4" 
+                      placeholder="Detail symptoms, hazard risks, affected student batch, or physical damage..."
+                      required
+                    ></textarea>
+                    <div class="form-hint">Used for rule-based dictionary classification and duplicate similarity analysis.</div>
+                  </div>
+
+                  <!-- Submitter Details -->
+                  <div class="form-row-2">
+                    <div class="form-group">
+                      <label class="form-label" for="submitterName">Your Full Name</label>
+                      <input type="text" id="submitterName" class="form-control" value="Aarav Sharma (Student CS-2024)">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label" for="submitterEmail">College Email</label>
+                      <input type="email" id="submitterEmail" class="form-control" value="aarav.s@campus.edu">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right Column: Photo Evidence & Live Impact-Scoring Engine Preview -->
+                <div class="form-right-col">
+                  <!-- Photo Upload Component -->
+                  <div class="form-group">
+                    <label class="form-label">
+                      Issue Photograph Evidence
+                    </label>
+                    
+                    <div class="upload-dropzone" id="uploadDropzone">
+                      <input type="file" id="issueImageInput" accept="image/*" onchange="App.handleImageSelect(event)">
+                      <div class="upload-icon">📷</div>
+                      <div class="upload-text">Click or drag & drop photograph</div>
+                      <div class="upload-sub">Supports JPG, PNG, WEBP (Max 5MB)</div>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div class="preview-container" id="imagePreviewContainer">
+                      <img id="previewImgElement" class="preview-img" alt="Complaint photo preview" src="">
+                      <button type="button" class="remove-img-btn" title="Remove photo" onclick="App.clearImagePreview()">×</button>
+                    </div>
+                  </div>
+
+                  <!-- LIVE IMPACT SCORING PREVIEW WIDGET -->
+                  <div class="live-impact-card" id="liveImpactCard">
+                    <div class="impact-header">
+                      <span style="font-weight: 700; font-size: 0.82rem; color: var(--accent-cyan);">Live Impact Score Calculation</span>
+                      <span class="engine-pill" id="liveEnginePill">Multi-Factor Engine</span>
+                    </div>
+
+                    <div class="impact-score-display">
+                      <div class="score-number-box" id="liveImpactScore">--</div>
+                      <div class="score-details-col">
+                        <div class="score-tier-label" id="liveScoreTier">Awaiting Input</div>
+                        <div class="score-formula-hint" id="liveFormulaSummary">Fill title, building & room to calculate impact</div>
+                      </div>
+                    </div>
+
+                    <!-- 3 Dimension Progress Bars -->
+                    <div class="dimension-progress-wrap">
+                      <div class="dimension-progress-header">
+                        <span style="color: var(--text-muted);">Severity Dimension ($S$)</span>
+                        <span id="liveSeverityLabel" style="color: var(--text-main);">0 / 40 pts</span>
+                      </div>
+                      <div class="dimension-track">
+                        <div class="dimension-fill" id="liveSeverityBar" style="width: 0%; background: #ef4444;"></div>
+                      </div>
+                    </div>
+
+                    <div class="dimension-progress-wrap">
+                      <div class="dimension-progress-header">
+                        <span style="color: var(--text-muted);">Location Importance ($L$)</span>
+                        <span id="liveLocationLabel" style="color: var(--text-main);">0 / 30 pts</span>
+                      </div>
+                      <div class="dimension-track">
+                        <div class="dimension-fill" id="liveLocationBar" style="width: 0%; background: #06b6d4;"></div>
+                      </div>
+                    </div>
+
+                    <div class="dimension-progress-wrap">
+                      <div class="dimension-progress-header">
+                        <span style="color: var(--text-muted);">Affected Population ($P$)</span>
+                        <span id="livePopulationLabel" style="color: var(--text-main);">0 / 30 pts</span>
+                      </div>
+                      <div class="dimension-track">
+                        <div class="dimension-fill" id="livePopulationBar" style="width: 0%; background: #8b5cf6;"></div>
+                      </div>
+                    </div>
+
+                    <!-- Rule Classification Category (Override Allowed) & Quick Category Selection -->
+                    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+                      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; color: var(--text-dim); font-weight: 600;">Rule-Detected Category:</span>
+                        <select id="detectedCategorySelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.78rem;">
+                          <option value="Electrical">Electrical</option>
+                          <option value="Plumbing">Plumbing</option>
+                          <option value="Cleanliness">Cleanliness</option>
+                          <option value="Infrastructure">Infrastructure</option>
+                          <option value="Safety">Safety</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div class="quick-cat-pills" id="quickCategoryPills">
+                        <button type="button" class="quick-cat-pill" data-cat="Electrical" onclick="App.selectQuickCategory('Electrical')">⚡ Electrical</button>
+                        <button type="button" class="quick-cat-pill" data-cat="Plumbing" onclick="App.selectQuickCategory('Plumbing')">💧 Plumbing</button>
+                        <button type="button" class="quick-cat-pill" data-cat="Cleanliness" onclick="App.selectQuickCategory('Cleanliness')">🧹 Cleanliness</button>
+                        <button type="button" class="quick-cat-pill" data-cat="Infrastructure" onclick="App.selectQuickCategory('Infrastructure')">🏗️ Infrastructure</button>
+                        <button type="button" class="quick-cat-pill" data-cat="Safety" onclick="App.selectQuickCategory('Safety')">🚨 Safety</button>
+                        <button type="button" class="quick-cat-pill" data-cat="Other" onclick="App.selectQuickCategory('Other')">📦 Other</button>
+                      </div>
+                    </div>
+
+                    <!-- Formula Explanation Callout -->
+                    <div class="formula-callout-box">
+                      <div>Transparent Deterministic Model (No ML/AI):</div>
+                      <div class="formula-math">Impact Score = Severity + Location + Population</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Form Action Buttons -->
+              <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn btn-secondary" onclick="App.navigate('student-overview')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="btnSubmitComplaint">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  Submit & Prioritize Ticket
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+
+        <!-- 3. STUDENT TRACK COMPLAINTS VIEW -->
+        <section class="page-view" id="view-student-reports">
+          <div class="view-header">
+            <div class="view-header-text">
+              <h2>Track Complaints Ranked by Actual Impact</h2>
+              <p>Tickets are ranked by campus impact score ($0-100$) rather than submission timestamp alone.</p>
+            </div>
+            <div class="filters-wrap">
+              <!-- Sorting Toolbar -->
+              <div class="sorting-toolbar-pill">
+                <button type="button" class="sort-btn active" id="btnSortImpactStudent" onclick="App.setSorting('impact')">
+                  ⚡ Impact Rank
+                </button>
+                <button type="button" class="sort-btn" id="btnSortTimeStudent" onclick="App.setSorting('time')">
+                  🕒 Newest First
+                </button>
+              </div>
+
+              <select id="studentCategoryFilter" class="filter-select" onchange="App.renderStudentReports()">
+                <option value="ALL">All Categories</option>
+                <option value="Electrical">Electrical</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Cleanliness">Cleanliness</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="Safety">Safety</option>
+                <option value="Other">Other</option>
+              </select>
+
+              <select id="studentStatusFilter" class="filter-select" onchange="App.renderStudentReports()">
+                <option value="ALL">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+
+              <button class="btn btn-primary btn-sm" onclick="App.navigate('student-submit')">+ New Complaint</button>
+            </div>
+          </div>
+
+          <!-- Cards Grid for Student View -->
+          <div class="tickets-grid" id="studentTicketsGrid">
+            <!-- Rendered via JS -->
+          </div>
+        </section>
+
+
+        <!-- 4. ADMIN OPERATIONS CONSOLE VIEW -->
+        <section class="page-view" id="view-admin-dashboard">
+          <div class="view-header">
+            <div class="view-header-text">
+              <h2>Impact Operations Desk</h2>
+              <p>Complaints dynamically ranked by computed severity, location sensitivity, and affected headcount.</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <!-- Sorting Toolbar -->
+              <div class="sorting-toolbar-pill">
+                <button type="button" class="sort-btn active" id="btnSortImpactAdmin" onclick="App.setSorting('impact')">
+                  ⚡ Impact Rank
+                </button>
+                <button type="button" class="sort-btn" id="btnSortTimeAdmin" onclick="App.setSorting('time')">
+                  🕒 Time
+                </button>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="App.exportComplaintsJson()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export JSON
+              </button>
+            </div>
+          </div>
+
+          <!-- Admin KPI Summary -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Active Backlog</span>
+                <div class="kpi-icon-wrap" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">📋</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-total">0</div>
+              <div class="kpi-sub">Total complaints recorded</div>
+            </div>
+
+            <div class="kpi-card pending">
+              <div class="kpi-header">
+                <span class="kpi-title">Pending Triage</span>
+                <div class="kpi-icon-wrap" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">⚡</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-pending">0</div>
+              <div class="kpi-sub">Awaiting dispatch</div>
+            </div>
+
+            <div class="kpi-card progress">
+              <div class="kpi-header">
+                <span class="kpi-title">In Progress</span>
+                <div class="kpi-icon-wrap" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">🛠️</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-progress">0</div>
+              <div class="kpi-sub">Technicians on-site</div>
+            </div>
+
+            <div class="kpi-card hazard">
+              <div class="kpi-header">
+                <span class="kpi-title">Safety Overrides</span>
+                <div class="kpi-icon-wrap" style="background: rgba(239, 68, 68, 0.15); color: #f87171;">🚨</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-high">0</div>
+              <div class="kpi-sub">Pinned P0 Emergency tasks</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #f97316;">
+              <div class="kpi-header">
+                <span class="kpi-title">SLA Overdue</span>
+                <div class="kpi-icon-wrap" style="background: rgba(249, 115, 22, 0.15); color: #fb923c;">⏱️</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-overdue">0</div>
+              <div class="kpi-sub">Active tickets past SLA threshold</div>
+            </div>
+          </div>
+
+          <!-- Admin Table with Search & Advanced Filters -->
+          <div class="table-card">
+            <div class="table-toolbar">
+              <div class="search-box-wrap">
+                <span class="search-icon">🔍</span>
+                <input 
+                  type="text" 
+                  id="adminSearchInput" 
+                  class="form-control" 
+                  placeholder="Search ID, title, room, staff, category..." 
+                  oninput="App.renderAdminTable()"
+                >
+              </div>
+
+              <div class="filters-wrap">
+                <select id="adminCategoryFilter" class="filter-select" onchange="App.renderAdminTable()">
+                  <option value="ALL">All Categories</option>
+                  <option value="Electrical">Electrical</option>
+                  <option value="Plumbing">Plumbing</option>
+                  <option value="Cleanliness">Cleanliness</option>
+                  <option value="Infrastructure">Infrastructure</option>
+                  <option value="Safety">Safety</option>
+                  <option value="Other">Other</option>
+                </select>
+
+                <select id="adminStatusFilter" class="filter-select" onchange="App.renderAdminTable()">
+                  <option value="ALL">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+
+                <select id="adminPriorityFilter" class="filter-select" onchange="App.renderAdminTable()">
+                  <option value="ALL">All Impact Tiers</option>
+                  <option value="P0">P0 - Critical Emergency</option>
+                  <option value="P1">P1 - High Impact</option>
+                  <option value="P2">P2 - Medium Impact</option>
+                  <option value="P3">P3 - Low Impact</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank & Impact</th>
+                    <th>Ticket</th>
+                    <th>Issue & Location</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Assigned Crew</th>
+                    <th>Reported</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminTableBody">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- 5. ADMIN ANALYTICS & CHARTS VIEW -->
+        <section class="page-view" id="view-admin-analytics">
+          <div class="view-header">
+            <div class="view-header-text">
+              <h2>Impact Analytics & SLA Metrics</h2>
+              <p>Visual statistics breakdown across priority tiers, categories, pipeline status, and SLA resolution performance.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="AnalyticsEngine.renderAll()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh Charts
+            </button>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="charts-grid">
+            <!-- Chart 1: Priority / Impact Tier Breakdown -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <span class="chart-card-title">Impact Tiers (P0 to P3)</span>
+                <span class="badge badge-priority-high">Engine Ranking</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chart-priority"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: Category Breakdown -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <span class="chart-card-title">Complaints by Category</span>
+                <span class="badge badge-cat-infrastructure">Distribution</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chart-category"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 3: Status Breakdown -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <span class="chart-card-title">Resolution Pipeline</span>
+                <span class="badge badge-status-inprogress">SLA Triage</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chart-status"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLA Performance & Maintenance Intelligence Cards -->
+          <div class="kpi-grid" style="margin-top: 10px;">
+            <div class="kpi-card resolved">
+              <div class="kpi-header">
+                <span class="kpi-title">Overall Resolution SLA</span>
+                <div class="kpi-icon-wrap" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🎯</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-rate">0%</div>
+              <div class="kpi-sub">Target SLA benchmark: > 75% within 48h</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Average Resolution Time</span>
+                <div class="kpi-icon-wrap" style="background: rgba(6, 182, 212, 0.15); color: #38bdf8;">⚡</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-avg-time">--</div>
+              <div class="kpi-sub">Real duration from submission to fix</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #f97316;">
+              <div class="kpi-header">
+                <span class="kpi-title">Overdue SLA Breaches</span>
+                <div class="kpi-icon-wrap" style="background: rgba(249, 115, 22, 0.15); color: #fb923c;">⏱️</div>
+              </div>
+              <div class="kpi-val" id="admin-kpi-analytics-overdue">0</div>
+              <div class="kpi-sub">P0: 2h • P1: 24h • P2: 48h • P3: 72h</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Active Field Crew</span>
+                <div class="kpi-icon-wrap" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">👷</div>
+              </div>
+              <div class="kpi-val">5 Staff</div>
+              <div class="kpi-sub">Electrical, Plumbing, Safety, Sanitation</div>
+            </div>
+          </div>
+
+          <!-- PRIORITY 2: Campus Infrastructure Issue Heatmap -->
+          <div class="heatmap-section">
+            <div class="table-card">
+              <div class="table-toolbar">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                    <span>Campus Infrastructure Issue Heatmap</span>
+                    <span class="engine-pill" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4);">Spatial Concentration</span>
+                  </div>
+                  <div style="font-size: 0.76rem; color: var(--text-dim); margin-top: 2px;">
+                    Aggregated issue density and risk tiers across all campus facilities. Click any building card to filter the Operations Console.
+                  </div>
+                </div>
+              </div>
+              <div style="padding: 16px;">
+                <div class="heatmap-grid" id="campusHeatmapGrid">
+                  <!-- Rendered via AnalyticsEngine.renderHeatmap() -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PRIORITY 2 & 3: Recurring Issue Pattern Detector -->
+          <div class="heatmap-section" style="margin-top: 20px;">
+            <div class="table-card">
+              <div class="table-toolbar">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                    <span>Recurring Infrastructure Patterns & Predictive Maintenance</span>
+                    <span class="engine-pill" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);">Early Warning</span>
+                  </div>
+                  <div style="font-size: 0.76rem; color: var(--text-dim); margin-top: 2px;">
+                    Algorithmic clustering of repeated incidents by location and category to detect structural wear and prevent cascading failures.
+                  </div>
+                </div>
+              </div>
+              <div style="padding: 16px;">
+                <div class="recurring-grid" id="recurringIssuesGrid">
+                  <!-- Rendered via AnalyticsEngine.renderRecurringPatterns() -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- 6. ADMIN STAFF DIRECTORY VIEW -->
+        <section class="page-view" id="view-admin-staff">
+          <div class="view-header">
+            <div class="view-header-text">
+              <h2>Maintenance Crew Directory</h2>
+              <p>Campus facility technicians and department supervisors assigned to operational resolution.</p>
+            </div>
+          </div>
+
+          <div class="tickets-grid" id="adminStaffGrid">
+            <!-- Rendered via JS from Store.getStaff() -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================
+       MODAL 1: VISUAL IMPACT SCORE EXPLANATION (CENTRAL INNOVATION)
+       ======================================================== -->
+  <div class="modal-overlay" id="impactModal" onclick="App.handleImpactModalOverlayClick(event)">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="brand-icon" style="width: 30px; height: 30px;">⚡</div>
+          <div>
+            <h3 class="modal-title" id="impactModalTitle">Impact Score Breakdown</h3>
+            <div style="font-size: 0.72rem; color: var(--accent-cyan);">Explainable Multi-Factor Deterministic Algorithm</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="App.closeImpactModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Emergency Override Banner (if active) -->
+        <div id="impactModalOverrideBanner" class="alert-banner" style="display: none; margin-bottom: 18px;">
+          <div class="alert-content">
+            <span class="alert-badge">
+              <span class="emergency-beacon"></span>
+              Emergency Override
+            </span>
+            <span id="impactModalOverrideText" style="font-size: 0.82rem;">Critical safety hazard detected. Normal queue bypassed.</span>
+          </div>
+        </div>
+
+        <!-- Overall Score Header Card -->
+        <div class="impact-score-display" style="margin-bottom: 20px;">
+          <div class="score-number-box" id="impactModalTotalScore" style="color: #818cf8;">--</div>
+          <div class="score-details-col">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="score-tier-label" id="impactModalTierBadge">Priority Tier</span>
+              <span class="rank-chip rank-1" id="impactModalRankBadge">Rank #1</span>
+            </div>
+            <div class="score-formula-hint" id="impactModalTicketSummary" style="margin-top: 4px;">Ticket #CP-000</div>
+          </div>
+        </div>
+
+        <!-- Dimension 1: Severity -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #ef4444;">1. Severity Dimension ($S$)</span>
+              <span class="engine-pill" style="font-size: 0.62rem;">Weight: 40%</span>
+            </div>
+            <span id="impactModalSeverityScore" style="font-weight: 800; font-size: 0.95rem; color: #f87171;">0 / 40 pts</span>
+          </div>
+          <div class="dimension-track" style="margin-bottom: 8px;">
+            <div class="dimension-fill" id="impactModalSeverityBar" style="width: 0%; background: #ef4444;"></div>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);" id="impactModalSeverityRationale">
+            Rationale goes here...
+          </div>
+        </div>
+
+        <!-- Dimension 2: Location Importance -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #06b6d4;">2. Location Importance ($L$)</span>
+              <span class="engine-pill" style="font-size: 0.62rem;">Weight: 30%</span>
+            </div>
+            <span id="impactModalLocationScore" style="font-weight: 800; font-size: 0.95rem; color: #38bdf8;">0 / 30 pts</span>
+          </div>
+          <div class="dimension-track" style="margin-bottom: 8px;">
+            <div class="dimension-fill" id="impactModalLocationBar" style="width: 0%; background: #06b6d4;"></div>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);" id="impactModalLocationRationale">
+            Rationale goes here...
+          </div>
+        </div>
+
+        <!-- Dimension 3: Affected Population -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #a855f7;">3. Affected Population ($P$)</span>
+              <span class="engine-pill" style="font-size: 0.62rem;">Weight: 30%</span>
+            </div>
+            <span id="impactModalPopulationScore" style="font-weight: 800; font-size: 0.95rem; color: #c084fc;">0 / 30 pts</span>
+          </div>
+          <div class="dimension-track" style="margin-bottom: 8px;">
+            <div class="dimension-fill" id="impactModalPopulationBar" style="width: 0%; background: #a855f7;"></div>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);" id="impactModalPopulationRationale">
+            Rationale goes here...
+          </div>
+        </div>
+
+        <!-- Mathematical Formula Verification -->
+        <div class="formula-callout-box" style="margin-top: 14px;">
+          <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Mathematical Formula & Integrity:</div>
+          <div class="formula-math" id="impactModalFormulaCalculation">Impact Score = S (0) + L (0) + P (0) = 0 / 100</div>
+          <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 4px;">
+            Deterministic rule-based prioritization: Eliminates human queue subjectivity and guarantees safety-critical hazards receive immediate operational response.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="App.closeImpactModal()">Close Explanation</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL 2: Ticket Details & Action Drawer -->
+  <div class="modal-overlay" id="ticketModal" onclick="App.handleModalOverlayClick(event)">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="ticket-cell-id" id="modalTicketId">CP-000</span>
+            <span id="modalTicketBadges"></span>
+          </div>
+          <h3 class="modal-title" id="modalTicketTitle" style="margin-top: 4px;">Ticket Details</h3>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="App.closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Photo and Info Layout -->
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 16px; margin-bottom: 20px;">
+          <div>
+            <img id="modalTicketImg" src="" alt="Issue photo" style="width: 140px; height: 140px; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: #1e293b; cursor: pointer;" onclick="App.openFullImage(this.src)">
+            <div style="font-size: 0.68rem; color: var(--text-dim); text-align: center; margin-top: 4px;">Click photo to zoom</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Location</div>
+            <div id="modalTicketLocation" style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px;">Building - Room</div>
+
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Impact Ranking & Score</div>
+            <div id="modalTicketImpactLine" style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+              <span class="rank-chip rank-1" id="modalTicketRank">Rank #1</span>
+              <span class="impact-badge impact-badge-p0" id="modalTicketImpactBadge">100 / 100</span>
+              <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 0.72rem;" onclick="App.openScoreExplanationModal(activeModalTicket.id)">Why this score?</button>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Submitted By</div>
+            <div id="modalTicketSubmitter" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">Student Name (Email)</div>
+
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Current Assignee</div>
+            <div id="modalTicketAssignee" style="font-size: 0.85rem; color: var(--accent-cyan);">Unassigned</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Problem Description</div>
+          <div id="modalTicketDesc" style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem; color: var(--text-main); line-height: 1.5;"></div>
+        </div>
+
+        <!-- Admin Management Controls (Visible to Admin or when toggling actions) -->
+        <div id="modalAdminControls" style="background: var(--bg-card-subtle); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+          <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: 12px;">
+            Facility Ops Actions
+          </div>
+          <div class="form-row-2">
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label" style="font-size: 0.75rem;">Change Status</label>
+              <select id="modalStatusSelect" class="form-control" style="font-size: 0.82rem; padding: 7px 10px;">
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label" style="font-size: 0.75rem;">Assign Maintenance Crew</label>
+              <select id="modalAssignSelect" class="form-control" style="font-size: 0.82rem; padding: 7px 10px;">
+                <option value="">Unassigned</option>
+                <!-- Populated by JS from Staff list -->
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.75rem;">Add Resolution or Progress Note</label>
+            <input type="text" id="modalResolutionNote" class="form-control" placeholder="e.g. Dispatched technician with replacement motor..." style="font-size: 0.82rem;">
+          </div>
+        </div>
+
+        <!-- Audit Trail / Timeline -->
+        <div>
+          <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim);">
+            Resolution History & Audit Log
+          </div>
+          <div class="timeline-list" id="modalTimelineList">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Close</button>
+        <button type="button" class="btn btn-primary" id="btnSaveModalChanges" onclick="App.saveModalChanges()">Save Updates</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Fullscreen Image Lightbox -->
+  <div class="modal-overlay" id="lightboxModal" onclick="App.closeLightbox()">
+    <div style="position: relative; max-width: 90vw; max-height: 90vh;">
+      <img id="lightboxImg" src="" alt="Full view" style="max-width: 100%; max-height: 85vh; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);">
+      <button type="button" class="modal-close-btn" style="position: absolute; top: -30px; right: 0; color: white;" onclick="App.closeLightbox()">✕ Close</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/classifier.js"></script>
+  <script src="js/impactEngine.js"></script>
+  <script src="js/duplicateDetector.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
