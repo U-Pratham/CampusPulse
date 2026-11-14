@@ -240,6 +240,7 @@ const IssueClassifier = (() => {
 
   return {
     classify,
+    classifyComplaint: classify,
     CATEGORY_RULES,
     PRIORITY_RULES
   };

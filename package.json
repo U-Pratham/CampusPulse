@@ -1,0 +1,22 @@
+{
+  "name": "campuspulse",
+  "version": "2.0.0",
+  "description": "CampusPulse - Impact-Based Campus Infrastructure Prioritization Platform with Native SQLite Backend & REST API",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "agy-node server.js",
+    "dev": "agy-node server.js",
+    "test": "agy-node test/backend_test.js"
+  },
+  "keywords": [
+    "campuspulse",
+    "impact-engine",
+    "prioritization",
+    "sqlite",
+    "rest-api",
+    "facility-management"
+  ],
+  "author": "CampusPulse Engineering",
+  "license": "MIT"
+}

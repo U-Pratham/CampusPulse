@@ -352,6 +352,70 @@ const Store = (() => {
     };
   }
 
+  // ========================================================
+  // BACKEND SYNCHRONIZATION BRIDGE (REST API + SQLITE)
+  // ========================================================
+  let isBackendConnected = false;
+
+  async function syncFromBackend() {
+    if (typeof window === 'undefined' || !window.location || !window.location.protocol.startsWith('http')) {
+      return;
+    }
+
+    try {
+      const healthRes = await fetch('/api/health');
+      if (healthRes.ok) {
+        isBackendConnected = true;
+        const statusLabel = document.getElementById('backendStatusLabel');
+        if (statusLabel) statusLabel.textContent = 'SQLite Backend Active';
+
+        // Synchronize complaints from SQLite database
+        const complaintsRes = await fetch('/api/complaints');
+        if (complaintsRes.ok) {
+          const remoteComplaints = await complaintsRes.json();
+          if (Array.isArray(remoteComplaints) && remoteComplaints.length > 0) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteComplaints));
+            notify('backend_synced', remoteComplaints);
+          }
+        }
+
+        // Synchronize staff directory from SQLite database
+        const staffRes = await fetch('/api/staff');
+        if (staffRes.ok) {
+          const remoteStaff = await staffRes.json();
+          if (Array.isArray(remoteStaff) && remoteStaff.length > 0) {
+            localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(remoteStaff));
+          }
+        }
+      }
+    } catch (e) {
+      const statusLabel = document.getElementById('backendStatusLabel');
+      if (statusLabel) statusLabel.textContent = 'LocalStorage Mode';
+    }
+  }
+
+  function postToBackend(endpoint, method = 'POST', data = null) {
+    if (typeof window === 'undefined' || !window.location || !window.location.protocol.startsWith('http')) {
+      return Promise.resolve(null);
+    }
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('campuspulse_auth_token') : null;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    return fetch(endpoint, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined
+    }).catch(err => {
+      console.warn('Backend sync deferred (offline):', err.message);
+    });
+  }
+
+  // Trigger sync on browser startup
+  if (typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+    setTimeout(syncFromBackend, 80);
+  }
+
   // Load complaints from localStorage (or seed if empty)
   function getComplaints(sortBy = 'impact') {
     let list = [];
@@ -510,6 +574,22 @@ const Store = (() => {
 
     list.unshift(newTicket);
     saveComplaints(list);
+
+    // Persist to SQLite Backend
+    postToBackend('/api/complaints', 'POST', {
+      title: complaintData.title,
+      description: complaintData.description,
+      building: complaintData.building,
+      room: complaintData.room,
+      category: complaintData.category,
+      submittedBy: complaintData.submittedBy,
+      userEmail: complaintData.userEmail,
+      imageUrl: complaintData.imageUrl,
+      imageFileName: complaintData.imageFileName,
+      isDuplicate: complaintData.isDuplicate,
+      duplicateOf: complaintData.duplicateOf
+    });
+
     return newTicket;
   }
 
@@ -561,6 +641,13 @@ const Store = (() => {
 
     list[idx] = ticket;
     saveComplaints(list);
+
+    // Persist endorsement to SQLite Backend
+    postToBackend(`/api/complaints/${id}/endorse`, 'POST', {
+      studentName,
+      studentEmail: (typeof window !== 'undefined' && window.App && window.App.getCurrentUser && window.App.getCurrentUser()) ? window.App.getCurrentUser().email : 'student@campus.edu'
+    });
+
     return {
       alreadyEndorsed: false,
       ticket
@@ -604,6 +691,10 @@ const Store = (() => {
 
     list[idx] = updated;
     saveComplaints(list);
+
+    // Persist update to SQLite Backend
+    postToBackend(`/api/complaints/${id}`, 'PATCH', updates);
+
     return updated;
   }
 
@@ -613,6 +704,10 @@ const Store = (() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
     localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(DEFAULT_STAFF));
     notify('demo_data_reset', initial);
+
+    // Persist reset to SQLite Backend
+    postToBackend('/api/demo/reset', 'POST');
+
     return initial;
   }
 
@@ -848,6 +943,8 @@ const Store = (() => {
     getRecurringIssues,
     calculateResolutionStats,
     checkOverdueStatus,
+    syncFromBackend,
+    isBackendConnected: () => isBackendConnected,
     BUILDINGS,
     SLA_THRESHOLDS,
     subscribe
