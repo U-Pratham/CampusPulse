@@ -14,14 +14,22 @@ const IssueClassifier = (() => {
       'exposed wire', 'exposed wires', 'exposed electrical wires', 'exposed cables',
       'bare wire', 'live wire', 'live wires', 'burning', 'gas leak', 'chemical', 'chemical spill',
       'flame', 'flames', 'fire hazard', 'fire hazards', 'structural collapse', 'broken glass',
-      'danger', 'dangerous', 'injury', 'panic', 'fire extinguisher', 'emergency'
+      'danger', 'dangerous', 'injury', 'panic', 'fire extinguisher', 'emergency',
+      // Dangerous overhead fixture & falling fan conditions
+      'verge of falling', 'about to fall', 'at risk of falling', 'ready to fall',
+      'detached ceiling fan', 'detached fan', 'fan detached', 'detached fixture',
+      'hanging from its mount', 'hanging from mount', 'hanging from ceiling',
+      'hanging by wire', 'hanging by wires', 'hanging by cable', 'dangling from ceiling', 'dangling from mount',
+      'falling electrical fixture', 'falling ceiling fixture', 'falling fixture', 'falling fan', 'fan falling',
+      'loose ceiling fan', 'loose ceiling fixture', 'unstable ceiling fan', 'unstable fan mount',
+      'fan wobbling violently', 'wobbling violently', 'violently wobbling', 'shaking violently', 'wobbling severely'
     ],
     Electrical: [
       'wire', 'wires', 'switch', 'switchboard', 'light', 'lights', 'tube light', 'bulb',
       'fan', 'ceiling fan', 'socket', 'plug', 'power', 'blackout', 'short circuit',
       'breaker', 'mcb', 'cable', 'cables', 'outlet', 'lamp', 'generator', 'inverter',
       'voltage', 'flickering', 'no power', 'tripped', 'ac not working', 'air conditioner',
-      'projector power'
+      'projector power', 'fan noise', 'fan humming', 'fan slow', 'speed regulator', 'capacitor'
     ],
     Plumbing: [
       'leak', 'leaking', 'leakage', 'pipe', 'pipes', 'tap', 'faucet', 'flush', 'drain',
@@ -34,7 +42,7 @@ const IssueClassifier = (() => {
       'stinking', 'waste', 'litter', 'stain', 'stains', 'sweep', 'sweeping', 'mop',
       'unhygienic', 'bin', 'dustbin', 'pest', 'cockroach', 'rat', 'rodent', 'spider web',
       'washroom dirty', 'bad smell', 'muddy', 'unclean', 'restroom', 'washroom', 'clean', 'cleaning',
-      'overflowing bin', 'overflowing dustbin'
+      'overflowing bin', 'overflowing dustbin', 'dirty fan', 'dusty fan', 'unclean fan', 'cobweb', 'cobwebs'
     ],
     Infrastructure: [
       'door', 'doors', 'window', 'windows', 'desk', 'desks', 'bench', 'chair', 'chairs',
@@ -53,7 +61,14 @@ const IssueClassifier = (() => {
       'flame', 'flames', 'smoke', 'burning', 'shock', 'electric shock', 'hazard',
       'severe leak', 'flooding', 'gushing water', 'structural crack', 'falling ceiling',
       'broken glass', 'chemical spill', 'gas smell', 'gas leak', 'emergency', 'critical',
-      'dangerous', 'danger', 'immediate', 'risk of fire'
+      'dangerous', 'danger', 'immediate', 'risk of fire',
+      // Dangerous overhead fixture & falling fan conditions
+      'verge of falling', 'about to fall', 'at risk of falling', 'ready to fall',
+      'detached ceiling fan', 'detached fan', 'fan detached', 'detached fixture',
+      'fan hanging from its mount', 'hanging from mount', 'hanging by wire', 'hanging by wires',
+      'falling electrical fixture', 'falling ceiling fixture', 'falling fixture', 'falling fan',
+      'loose ceiling fan', 'loose ceiling fixture', 'unstable ceiling fan',
+      'fan wobbling violently', 'wobbling violently', 'violently wobbling', 'shakes violently'
     ],
     Medium: [
       'broken fan', 'fan not working', 'damaged chair', 'broken desk', 'broken chair',
@@ -67,7 +82,8 @@ const IssueClassifier = (() => {
       'dustbin full', 'overflowing bin', 'overflowing dustbin', 'smell', 'odor',
       'paint peeling', 'stain', 'loose notice', 'spider web', 'squeaky door',
       'dirty board', 'minor leak', 'routine', 'dirty', 'trash', 'garbage', 'restroom',
-      'needs cleaning'
+      'needs cleaning', 'fan noise', 'fan making noise', 'noisy fan', 'squeaking fan',
+      'fan hum', 'fan humming', 'fan slow', 'fan speed', 'slow fan'
     ]
   };
 
@@ -129,11 +145,19 @@ const IssueClassifier = (() => {
       }
     }
 
-    // Safety regex boost: exposed wires and fire hazards always boost Safety
+    // Safety regex boost: exposed wires, fire hazards, and dangerous falling overhead fixtures
     if (/\b(exposed|bare|loose|dangling|live)\s+(\w+\s+)?(wires?|cables?)\b/i.test(fullText) ||
-        /\bfire(\s+hazards?)?\b/i.test(fullText)) {
-      categoryScores.Safety += 8;
-      matchedCategoryKeywords.Safety.push('hazard pattern detected');
+        /\bfire(\s+hazards?)?\b/i.test(fullText) ||
+        /\b(fan|fixture|light)\s+(on\s+the\s+verge\s+of\s+falling|about\s+to\s+fall|ready\s+to\s+fall|falling|detached|loose|unstable)\b/i.test(fullText) ||
+        /\b(verge\s+of\s+falling|about\s+to\s+fall|hanging\s+from\s+(its\s+)?mount|detached\s+(ceiling\s+)?fan|falling\s+(electrical\s+|ceiling\s+)?fixture|loose\s+ceiling\s+(fan|fixture)|(fan\s+)?wobbl(ing|e)\s+violently|violently\s+wobbl(ing|e))\b/i.test(fullText)) {
+      categoryScores.Safety += 12;
+      matchedCategoryKeywords.Safety.push('falling hazard / dangerous overhead fixture detected');
+    }
+
+    // Cleanliness boost: dirty/dusty fans and fixtures
+    if (/\b(dirty|dusty|cleaning|unclean|cobwebs?)\b/i.test(fullText) && /\bfan\b/i.test(fullText) && !/\b(spark|wire|burn|fall|drop|loose|wobbl)\b/i.test(fullText)) {
+      categoryScores.Cleanliness += 8;
+      matchedCategoryKeywords.Cleanliness.push('fan housekeeping');
     }
 
     let detectedCategory = 'Other';
@@ -151,7 +175,7 @@ const IssueClassifier = (() => {
     let priorityRationale = 'Standard maintenance issue requiring standard operational schedule.';
     const matchedPriorityKeywords = [];
 
-    // Check High priority first (Safety hazards, immediate dangers)
+    // Check High priority first (Safety hazards, immediate dangers, falling fixtures)
     let hasHighTrigger = false;
     for (const kw of PRIORITY_RULES.High) {
       if (fullText.includes(kw)) {
@@ -160,8 +184,11 @@ const IssueClassifier = (() => {
       }
     }
 
-    if (/\b(exposed|bare|live)\s+(\w+\s+)?wires?\b/i.test(fullText) || /\bfire\b/i.test(fullText)) {
+    if (/\b(exposed|bare|live)\s+(\w+\s+)?wires?\b/i.test(fullText) || 
+        /\bfire\b/i.test(fullText) ||
+        /\b(verge\s+of\s+falling|about\s+to\s+fall|hanging\s+from\s+(its\s+)?mount|detached\s+(ceiling\s+)?fan|falling\s+(electrical\s+|ceiling\s+)?fixture|loose\s+ceiling\s+(fan|fixture)|(fan\s+)?wobbl(ing|e)\s+violently|violently\s+wobbl(ing|e))\b/i.test(fullText)) {
       hasHighTrigger = true;
+      matchedPriorityKeywords.push('dangerous overhead fixture condition');
     }
 
     if (hasHighTrigger || detectedCategory === 'Safety') {

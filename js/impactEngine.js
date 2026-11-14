@@ -35,7 +35,7 @@ const ImpactEngine = (() => {
     /\bburning(\s+smell)?\b/i,
     /\bgas\s+leak\b/i,
     /\bstructural\s+(collapse|crack|failure)\b/i,
-    /\b(falling|collapsed)\s+ceiling\b/i,
+    /\b(falling|collapsed)\s+ceiling(?!\s+fan)\b/i,
     /\bchemical\s+spill\b/i,
     /\bexplosion(\s+hazard)?\b/i
   ];
@@ -63,7 +63,7 @@ const ImpactEngine = (() => {
   // Specific room keywords modifier (adds to location criticality up to max 30)
   const ROOM_MODIFIERS = [
     { pattern: /(lab|workshop|server|substation|panel)/i, bonus: 4, reason: 'Technical laboratory / electrical distribution point' },
-    { pattern: /(auditorium|hall|seminar|mess|canteen)/i, bonus: 3, reason: 'Large capacity assembly hall' },
+    { pattern: /(auditorium|hall|seminar|mess|canteen|lh[\s-]?\d+|lt[\s-]?\d+|lecture\s*(hall|theatre|room))/i, bonus: 4, reason: 'Large capacity lecture hall / assembly hall' },
     { pattern: /(washroom|restroom|toilet)/i, bonus: 2, reason: 'Essential daily hygiene facility' },
     { pattern: /(corridor|hallway|staircase|stair|exit|gate)/i, bonus: 3, reason: 'Primary evacuation & transit route' }
   ];
@@ -73,33 +73,58 @@ const ImpactEngine = (() => {
    */
   function calculateSeverity(category, text) {
     const lower = (text || '').toLowerCase();
-    let score = 12; // baseline
+    let score = 15; // baseline
     let rationale = 'Routine operational wear and tear.';
 
     const emergency = checkEmergencyOverride(text, '', category);
 
-    // Check High severity indicators (30-40 pts)
-    if (emergency.isEmergency || category === 'Safety') {
+    // 1. Immediate Safety Emergency (40 pts)
+    if (emergency.isEmergency) {
       score = 40;
-      rationale = 'Critical Safety Hazard: Immediate danger of physical harm, electric shock, fire, or structural hazard.';
-    } else if (lower.includes('severe leak') || lower.includes('flooding') || lower.includes('short circuit') || lower.includes('blackout')) {
+      rationale = 'Critical Safety Hazard: Immediate emergency danger of physical harm, electric shock, fire, or structural collapse.';
+    }
+    // 2. Critical Overhead Falling / Detachment Hazard (38 pts)
+    else if (/\b(on\s+the\s+verge\s+of\s+falling|about\s+to\s+fall|ready\s+to\s+fall|at\s+risk\s+of\s+falling|detached\s+(ceiling\s+)?fan|fan\s+detached|hanging\s+from\s+(its\s+)?mount|falling\s+(electrical\s+|ceiling\s+)?fixture|falling\s+fan|fan\s+falling)\b/i.test(lower)) {
+      score = 38;
+      rationale = 'Critical Safety Concern: Overhead ceiling fan or fixture at immediate risk of falling, posing severe blunt-force head trauma hazard.';
+    }
+    // 3. Major utility disruption causing shutdown or flooding (35 pts)
+    else if (lower.includes('severe leak') || lower.includes('flooding') || lower.includes('short circuit') || lower.includes('blackout')) {
       score = 35;
-      rationale = 'High Severity: Major utility disruption causing facility shutdown or damage.';
-    } else if (category === 'Plumbing' && (lower.includes('overflow') || lower.includes('clogged') || lower.includes('gushing'))) {
+      rationale = 'High Severity: Major utility disruption causing facility shutdown or structural damage.';
+    }
+    // 4. High Severity Overhead Instability / Violent Wobble / Loose Mounting (30 pts)
+    else if (/\b(wobbl(ing|e)\s+violently|violently\s+wobbl(ing|e)|wobbl(ing|e)\s+severely|severe\s+wobble|violent\s+wobble|shakes?\s+violently|violently\s+shaking|loose\s+ceiling\s+(fan|fixture)|loose\s+fan|unstable\s+(ceiling\s+)?fan|fan\s+blade\s+loose|loose\s+bracket)\b/i.test(lower)) {
+      score = 30;
+      rationale = 'High Severity: Ceiling fan mounting instability or violent wobbling posing active structural detachment risk.';
+    }
+    // 5. Active Plumbing water hazard (30 pts)
+    else if (category === 'Plumbing' && (lower.includes('overflow') || lower.includes('clogged') || lower.includes('gushing'))) {
       score = 30;
       rationale = 'High-Medium Severity: Active water hazard requiring prompt isolation.';
-    } else if (category === 'Electrical' && (lower.includes('fan') || lower.includes('ac') || lower.includes('light'))) {
-      if (lower.includes('wobbling') || lower.includes('screeching') || lower.includes('spark')) {
-        score = 28;
-        rationale = 'Medium-High Severity: Mechanical failure posing falling risk or acute disruption.';
-      } else {
-        score = 20;
-        rationale = 'Medium Severity: Non-hazardous electrical appliance failure.';
-      }
-    } else if (category === 'Infrastructure' && (lower.includes('broken') || lower.includes('sharp') || lower.includes('crack'))) {
+    }
+    // 6. Other General Safety Issues (32 pts)
+    else if (category === 'Safety') {
+      score = 32;
+      rationale = 'Safety Hazard: Physical risk requiring expedited inspection and containment.';
+    }
+    // 7. Structural / furniture damage (22 pts)
+    else if (category === 'Infrastructure' && (lower.includes('broken') || lower.includes('sharp') || lower.includes('crack'))) {
       score = 22;
       rationale = 'Medium Severity: Structural or furniture damage causing student inconvenience or injury risk.';
-    } else if (category === 'Cleanliness') {
+    }
+    // 8. Minor fan noise / humming / slow speed (Low severity: 10 pts)
+    else if (lower.includes('fan') && (lower.includes('noise') || lower.includes('squeak') || lower.includes('hum') || lower.includes('slow') || lower.includes('regulator') || lower.includes('capacitor'))) {
+      score = 10;
+      rationale = 'Low Severity: Minor acoustic annoyance or routine fan maintenance without mechanical detachment hazard.';
+    }
+    // 9. Standard non-hazardous electrical failure (20 pts)
+    else if (category === 'Electrical' && (lower.includes('fan') || lower.includes('ac') || lower.includes('light'))) {
+      score = 20;
+      rationale = 'Medium Severity: Non-hazardous electrical appliance failure causing thermal/comfort disruption.';
+    }
+    // 10. Cleanliness issues (8-15 pts)
+    else if (category === 'Cleanliness' || (lower.includes('fan') && (lower.includes('cobweb') || lower.includes('dust') || lower.includes('dirty')))) {
       if (lower.includes('overflowing') || lower.includes('odor') || lower.includes('stink')) {
         score = 15;
         rationale = 'Moderate Sanitation Issue: Unhygienic public condition requiring janitorial dispatch.';
@@ -164,7 +189,7 @@ const ImpactEngine = (() => {
       score = 26;
       estimatedHeadcount = '150–500+ students';
       rationale = 'High-traffic common thoroughfare / primary public facility.';
-    } else if (text.includes('lecture hall') || text.includes('seminar') || text.includes('lab')) {
+    } else if (text.includes('lecture hall') || text.includes('lecture theatre') || text.includes('seminar') || text.includes('lab') || /\b(lh|lt)[\s-]?\d+/i.test(text)) {
       score = 20;
       estimatedHeadcount = '60–120 students';
       rationale = 'Large multi-batch academic lecture space.';
@@ -197,7 +222,7 @@ const ImpactEngine = (() => {
    * Detects safety-critical hazards including exposed wires and fire hazards.
    */
   function checkEmergencyOverride(title = '', description = '', category = '') {
-    const text = `${title} ${description}`.toLowerCase();
+    const text = `${title}. ${description}`.toLowerCase();
     const matchedTriggers = [];
 
     // Exact keyword checks
@@ -216,7 +241,13 @@ const ImpactEngine = (() => {
     }
 
     const isEmergency = matchedTriggers.length > 0 || 
-      (category === 'Safety' && (text.includes('wire') || text.includes('hazard') || text.includes('spark') || text.includes('fire')));
+      (category === 'Safety' && (
+        /\b(exposed|bare|live)\s+(\w+\s+)?wires?\b/i.test(text) || 
+        /\b(sparks?|sparking)\b/i.test(text) || 
+        /\b(fire|flames?|gas\s+leak|chemical\s+spill|explosion)\b/i.test(text) ||
+        /\bstructural\s+collapse\b/i.test(text) ||
+        /\b(ceiling\s+fell|fan\s+fell|hanging\s+by\s+(wires?|cables?))\b/i.test(text)
+      ));
 
     return {
       isEmergency,
@@ -235,7 +266,7 @@ const ImpactEngine = (() => {
   function evaluateImpact(complaint) {
     const title = complaint.title || '';
     const description = complaint.description || '';
-    const fullText = `${title} ${description}`;
+    const fullText = `${title}. ${description}`;
     const category = complaint.category || 'Other';
     const building = complaint.building || 'Academic Block A';
     const room = complaint.room || '';
@@ -258,7 +289,7 @@ const ImpactEngine = (() => {
       finalScore = 100;
       priorityTier = 'CRITICAL EMERGENCY (P0)';
       priorityCode = 'P0';
-    } else if (rawScore >= 80) {
+    } else if (rawScore >= 80 || (severity.score >= 35 && rawScore >= 65)) {
       priorityTier = 'HIGH IMPACT (P1)';
       priorityCode = 'P1';
     } else if (rawScore >= 50) {

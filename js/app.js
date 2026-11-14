@@ -10,7 +10,30 @@
  */
 
 const App = (() => {
+  const AUTH_STORAGE_KEY = 'campuspulse_auth_user';
+
+  const DEMO_PERSONAS = {
+    student: {
+      name: 'Aarav Sharma',
+      email: 'aarav.s@campus.edu',
+      role: 'student',
+      department: 'CS & IT Dept',
+      room: 'Room 204 • B.Tech 2024',
+      avatar: 'ST'
+    },
+    admin: {
+      name: 'Anita Desai (Supervisor)',
+      email: 'anita.d@campus.edu',
+      role: 'admin',
+      department: 'Facility Management Ops',
+      room: 'Central Admin Wing',
+      avatar: 'AD'
+    }
+  };
+
+  let currentUser = null;
   let currentRole = 'student'; // 'student' | 'admin'
+  let loginSelectedRole = 'student'; // 'student' | 'admin'
   let currentView = 'student-overview';
   let currentSortMode = 'impact'; // 'impact' (default) | 'time'
   let uploadedImageBase64 = null;
@@ -73,6 +96,7 @@ const App = (() => {
       refreshAllViews();
     });
 
+    checkAuth();
     refreshAllViews();
 
     setTimeout(() => {
@@ -247,10 +271,10 @@ const App = (() => {
         enginePill.textContent = 'Multi-Factor Engine';
       }
 
-      if (evaluation.finalScore >= 80) {
+      if (evaluation.priorityCode === 'P1' || evaluation.finalScore >= 80) {
         scoreBox.style.color = '#fb923c';
         if (tierLabel) tierLabel.innerHTML = `<span style="color: #fb923c;">P1 - High Impact</span>`;
-      } else if (evaluation.finalScore >= 50) {
+      } else if (evaluation.priorityCode === 'P2' || evaluation.finalScore >= 50) {
         scoreBox.style.color = '#60a5fa';
         if (tierLabel) tierLabel.innerHTML = `<span style="color: #60a5fa;">P2 - Medium Impact</span>`;
       } else {
@@ -441,8 +465,8 @@ const App = (() => {
     const building = document.getElementById('complaintBuilding').value;
     const room = document.getElementById('complaintRoom').value.trim();
     const description = document.getElementById('complaintDescription').value.trim();
-    const submitterName = document.getElementById('submitterName').value.trim() || 'Student User';
-    const submitterEmail = document.getElementById('submitterEmail').value.trim() || 'student@campus.edu';
+    const submitterName = document.getElementById('submitterName').value.trim() || (currentUser ? currentUser.name : 'Student User');
+    const submitterEmail = document.getElementById('submitterEmail').value.trim() || (currentUser ? currentUser.email : 'student@campus.edu');
     const category = document.getElementById('detectedCategorySelect').value;
 
     if (!title || !building || !room || !description) {
@@ -474,64 +498,216 @@ const App = (() => {
     latestClassification = null;
     latestImpactEval = null;
 
+    // Restore verified student credentials
+    if (currentUser) {
+      const nameEl = document.getElementById('submitterName');
+      const emailEl = document.getElementById('submitterEmail');
+      if (nameEl) nameEl.value = currentUser.name;
+      if (emailEl) emailEl.value = currentUser.email;
+    }
+
     showToast(`Ticket #${newTicket.id} logged! Impact Score: ${newTicket.impactScore}/100 (${newTicket.priorityTier})`, 'success');
     navigate('student-reports');
   }
 
-  // Role Switching Logic
-  function switchRole(role) {
-    currentRole = role;
+  // ========================================================
+  // AUTHENTICATION & ROLE-BASED ACCESS CONTROL (RBAC)
+  // ========================================================
+  function checkAuth() {
+    try {
+      const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+      if (stored) {
+        const user = JSON.parse(stored);
+        if (user && user.role) {
+          currentUser = user;
+          currentRole = user.role;
+          applyUserSession(currentUser, false);
+          hideLoginOverlay();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse auth session:', e);
+    }
 
-    const btnStudent = document.getElementById('btnRoleStudent');
-    const btnAdmin = document.getElementById('btnRoleAdmin');
-    const labelTag = document.getElementById('roleLabelTag');
+    // Default unauthenticated: display login portal
+    currentUser = null;
+    showLoginOverlay();
+  }
+
+  function showLoginOverlay() {
+    const overlay = document.getElementById('loginOverlay');
+    if (overlay) overlay.classList.add('active');
+  }
+
+  function hideLoginOverlay() {
+    const overlay = document.getElementById('loginOverlay');
+    if (overlay) overlay.classList.remove('active');
+  }
+
+  function setLoginRole(role) {
+    loginSelectedRole = role;
+    const tabStudent = document.getElementById('loginTabStudent');
+    const tabAdmin = document.getElementById('loginTabAdmin');
+    const emailInput = document.getElementById('loginEmail');
+
+    if (role === 'student') {
+      if (tabStudent) tabStudent.classList.add('active');
+      if (tabAdmin) tabAdmin.classList.remove('active');
+      if (emailInput && (!emailInput.value || emailInput.value === 'anita.d@campus.edu')) {
+        emailInput.value = 'aarav.s@campus.edu';
+      }
+    } else {
+      if (tabAdmin) tabAdmin.classList.add('active');
+      if (tabStudent) tabStudent.classList.remove('active');
+      if (emailInput && (!emailInput.value || emailInput.value === 'aarav.s@campus.edu')) {
+        emailInput.value = 'anita.d@campus.edu';
+      }
+    }
+  }
+
+  function quickDemoLogin(role) {
+    const persona = DEMO_PERSONAS[role] || DEMO_PERSONAS.student;
+    loginUser(persona);
+  }
+
+  function handleLoginFormSubmit(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const emailInput = document.getElementById('loginEmail');
+    const email = emailInput ? emailInput.value.trim() : '';
+
+    let role = loginSelectedRole;
+    if (email.toLowerCase().includes('admin') || email.toLowerCase().includes('anita')) {
+      role = 'admin';
+    }
+
+    let persona = DEMO_PERSONAS[role];
+    if (!persona) {
+      persona = {
+        name: email.split('@')[0] || (role === 'admin' ? 'Facility Admin' : 'Student User'),
+        email: email || (role === 'admin' ? 'admin@campus.edu' : 'student@campus.edu'),
+        role: role,
+        department: role === 'admin' ? 'Facility Management Ops' : 'Student Body',
+        room: role === 'admin' ? 'Central Admin Wing' : 'Campus Hostel',
+        avatar: role === 'admin' ? 'AD' : 'ST'
+      };
+    } else if (email && email !== persona.email) {
+      persona = Object.assign({}, persona, {
+        email,
+        name: email.split('@')[0].replace('.', ' ').toUpperCase()
+      });
+    }
+
+    loginUser(persona);
+  }
+
+  function loginUser(user) {
+    currentUser = user;
+    currentRole = user.role;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+      }
+    } catch (e) {
+      console.warn('Storage quota exceeded or error:', e);
+    }
+
+    applyUserSession(user, true);
+    hideLoginOverlay();
+
+    showToast(`Welcome, ${user.name}! Signed into ${user.role === 'admin' ? 'Facility Operations Desk' : 'Student Portal'}.`, 'success');
+
+    if (user.role === 'admin') {
+      navigate('admin-dashboard');
+    } else {
+      navigate('student-overview');
+    }
+  }
+
+  function logout() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    } catch (e) {}
+
+    currentUser = null;
+    showToast('You have signed out of CampusPulse.', 'info');
+    showLoginOverlay();
+  }
+
+  function applyUserSession(user, showNotice = false) {
+    if (!user) return;
+    currentRole = user.role;
+
+    // Sidebar Session Card
+    const sessionRoleBadge = document.getElementById('sessionRoleBadge');
+    const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
+    const sidebarUserName = document.getElementById('sidebarUserName');
+    const sidebarUserDept = document.getElementById('sidebarUserDept');
     const studentNav = document.getElementById('studentNavSection');
     const adminNav = document.getElementById('adminNavSection');
+
+    if (sessionRoleBadge) {
+      sessionRoleBadge.textContent = user.role === 'admin' ? 'Facility Admin' : 'Student';
+      sessionRoleBadge.style.color = user.role === 'admin' ? '#f59e0b' : 'var(--accent-cyan)';
+    }
+    if (sidebarUserAvatar) sidebarUserAvatar.textContent = user.avatar || (user.name[0] || 'U');
+    if (sidebarUserName) sidebarUserName.textContent = user.name;
+    if (sidebarUserDept) sidebarUserDept.textContent = user.department || (user.role === 'admin' ? 'Facility Management' : 'Student');
+
+    // Header Profile & Badge
     const roleBadgeText = document.getElementById('roleBadgeText');
-    const quickSwitchText = document.getElementById('btnQuickSwitchText');
     const userAvatar = document.getElementById('userAvatar');
     const userNameLabel = document.getElementById('userNameLabel');
     const userRoleSub = document.getElementById('userRoleSub');
 
-    if (role === 'student') {
-      btnStudent.classList.add('active');
-      btnAdmin.classList.remove('active');
-      if (labelTag) labelTag.textContent = 'Student';
+    if (roleBadgeText) {
+      roleBadgeText.textContent = user.role === 'admin' ? 'Facility Admin / Ops' : 'Student Mode';
+    }
+    if (userAvatar) userAvatar.textContent = user.avatar || (user.name[0] || 'U');
+    if (userNameLabel) userNameLabel.textContent = user.name;
+    if (userRoleSub) userRoleSub.textContent = user.department || user.room || 'Campus User';
+
+    // Submitter inputs for new complaints
+    const submitterName = document.getElementById('submitterName');
+    const submitterEmail = document.getElementById('submitterEmail');
+    if (submitterName && user.role === 'student') submitterName.value = user.name;
+    if (submitterEmail && user.role === 'student') submitterEmail.value = user.email;
+
+    // RBAC: Dynamic Navigation
+    if (user.role === 'student') {
       if (studentNav) studentNav.style.display = 'block';
       if (adminNav) adminNav.style.display = 'none';
-      if (roleBadgeText) roleBadgeText.textContent = 'Student Mode';
-      if (quickSwitchText) quickSwitchText.textContent = 'Switch to Admin';
-      if (userAvatar) userAvatar.textContent = 'ST';
-      if (userNameLabel) userNameLabel.textContent = 'Aarav Sharma';
-      if (userRoleSub) userRoleSub.textContent = 'CS Dept • Room 204';
-
-      showToast('Switched to Student Portal', 'info');
-      navigate('student-overview');
     } else {
-      btnAdmin.classList.add('active');
-      btnStudent.classList.remove('active');
-      if (labelTag) labelTag.textContent = 'Administrator';
-      if (studentNav) studentNav.style.display = 'none';
+      // Admin has full operations + student views preview
+      if (studentNav) studentNav.style.display = 'block';
       if (adminNav) adminNav.style.display = 'block';
-      if (roleBadgeText) roleBadgeText.textContent = 'Admin / Ops';
-      if (quickSwitchText) quickSwitchText.textContent = 'Switch to Student';
-      if (userAvatar) userAvatar.textContent = 'AD';
-      if (userNameLabel) userNameLabel.textContent = 'Anita Desai (Supervisor)';
-      if (userRoleSub) userRoleSub.textContent = 'Facility Management Ops';
-
-      showToast('Switched to Facility Administration Portal', 'info');
-      navigate('admin-dashboard');
     }
 
     refreshAllViews();
+  }
+
+  // Backward-compatible role switching
+  function switchRole(role) {
+    quickDemoLogin(role);
   }
 
   function toggleRole() {
     switchRole(currentRole === 'student' ? 'admin' : 'student');
   }
 
-  // Navigation Logic
+  // Navigation Logic with Route Guarding
   function navigate(viewId) {
+    // RBAC Route Guard: Block students from accessing admin operational views
+    if (currentUser && currentUser.role === 'student') {
+      if (viewId === 'admin-dashboard' || viewId === 'admin-analytics' || viewId === 'admin-staff') {
+        showToast('🚨 Access Restricted: Facility Admin credentials required for Operations Desk & Analytics.', 'error');
+        viewId = 'student-overview';
+      }
+    }
+
     currentView = viewId;
 
     const navItems = document.querySelectorAll('.nav-item');
@@ -1042,9 +1218,28 @@ const App = (() => {
       whyScoreBtn.onclick = () => App.openScoreExplanationModal(ticket.id);
     }
 
-    document.getElementById('modalStatusSelect').value = ticket.status;
-    document.getElementById('modalAssignSelect').value = ticket.assignedTo || '';
-    document.getElementById('modalResolutionNote').value = ticket.resolutionNotes || '';
+    // RBAC: Operations controls for Admin vs Community Endorsement for Student
+    const adminControls = document.getElementById('modalAdminControls');
+    const studentActions = document.getElementById('modalStudentActions');
+    const btnSaveModal = document.getElementById('btnSaveModalChanges');
+
+    const isAdmin = currentUser && currentUser.role === 'admin';
+
+    if (isAdmin) {
+      if (adminControls) adminControls.style.display = 'block';
+      if (studentActions) studentActions.style.display = 'none';
+      if (btnSaveModal) btnSaveModal.style.display = 'inline-flex';
+
+      document.getElementById('modalStatusSelect').value = ticket.status;
+      document.getElementById('modalAssignSelect').value = ticket.assignedTo || '';
+      document.getElementById('modalResolutionNote').value = ticket.resolutionNotes || '';
+    } else {
+      if (adminControls) adminControls.style.display = 'none';
+      if (studentActions) studentActions.style.display = 'block';
+      if (btnSaveModal) btnSaveModal.style.display = 'none';
+
+      updateModalStudentEndorseState(ticket);
+    }
 
     // Render Timeline
     const timelineContainer = document.getElementById('modalTimelineList');
@@ -1085,6 +1280,11 @@ const App = (() => {
   function saveModalChanges() {
     if (!activeModalTicket) return;
 
+    if (!currentUser || currentUser.role !== 'admin') {
+      showToast('Unauthorized: Only Facility Admins can update operational status.', 'error');
+      return;
+    }
+
     const newStatus = document.getElementById('modalStatusSelect').value;
     const newAssignee = document.getElementById('modalAssignSelect').value;
     const noteText = document.getElementById('modalResolutionNote').value.trim();
@@ -1102,6 +1302,62 @@ const App = (() => {
     Store.updateComplaint(activeModalTicket.id, updates);
     showToast(`Ticket #${activeModalTicket.id} updated.`, 'success');
     closeModal();
+  }
+
+  function updateModalStudentEndorseState(ticket) {
+    const badge = document.getElementById('modalEndorseCountBadge');
+    const btn = document.getElementById('btnModalEndorse');
+    const btnText = document.getElementById('btnModalEndorseText');
+    const hint = document.getElementById('modalEndorseHint');
+
+    const endorsements = ticket.endorsedBy || [];
+    if (badge) badge.textContent = `${endorsements.length} Endorsement${endorsements.length === 1 ? '' : 's'}`;
+
+    const studentName = currentUser ? currentUser.name : 'Student';
+    const hasEndorsed = endorsements.some(n => n.toLowerCase().trim() === studentName.toLowerCase().trim());
+
+    if (!btn || !btnText) return;
+
+    if (ticket.status === 'Resolved') {
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      btn.style.cursor = 'not-allowed';
+      btnText.textContent = '✅ Issue Resolved by Facility Team';
+      if (hint) hint.textContent = 'This issue has been resolved. Further community endorsements are closed.';
+    } else if (hasEndorsed) {
+      btn.disabled = true;
+      btn.style.opacity = '0.85';
+      btn.style.cursor = 'default';
+      btnText.textContent = '✅ You have endorsed this issue (+Boosted)';
+      if (hint) hint.textContent = 'Thank you! Your endorsement has verified crowd impact and elevated this ticket in the dispatch queue.';
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btnText.textContent = '👍 Endorse This Issue (+Community Impact Boost)';
+      if (hint) hint.textContent = 'Are you also experiencing this disruption? Endorse to verify community impact and elevate its priority in the operations queue.';
+    }
+  }
+
+  function handleModalEndorse() {
+    if (!activeModalTicket || !currentUser) return;
+
+    const studentName = currentUser.name || 'Verified Student';
+    const result = Store.endorseComplaint(activeModalTicket.id, studentName);
+
+    if (result && result.alreadyEndorsed) {
+      showToast('You have already endorsed this complaint.', 'warning');
+      return;
+    }
+
+    showToast(`Endorsed #${activeModalTicket.id}! Community weight added to ticket.`, 'success');
+    refreshAllViews();
+
+    const updated = Store.getComplaints().find(c => c.id === activeModalTicket.id);
+    if (updated) {
+      activeModalTicket = updated;
+      openTicketModal(updated.id);
+    }
   }
 
   // Fullscreen Lightbox
@@ -1155,6 +1411,12 @@ const App = (() => {
 
   return {
     init,
+    checkAuth,
+    setLoginRole,
+    quickDemoLogin,
+    handleLoginFormSubmit,
+    loginUser,
+    logout,
     switchRole,
     toggleRole,
     navigate,
@@ -1162,6 +1424,7 @@ const App = (() => {
     setSorting,
     handleComplaintSubmit,
     handleEndorseDuplicate,
+    handleModalEndorse,
     handleImageSelect,
     clearImagePreview,
     handleQuickStatusChange,
@@ -1179,7 +1442,8 @@ const App = (() => {
     renderStudentReports,
     renderAdminTable,
     selectQuickCategory,
-    filterByBuilding
+    filterByBuilding,
+    getCurrentUser: () => currentUser
   };
 })();
 

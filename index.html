@@ -12,6 +12,107 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+  <!-- ========================================================
+       LOGIN PORTAL (AUTHENTICATION & RBAC GATEWAY)
+       ======================================================== -->
+  <div class="login-overlay active" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-brand-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <h1 class="login-title">CampusPulse</h1>
+        <p class="login-subtitle">Impact-Based Campus Infrastructure Prioritization System</p>
+      </div>
+
+      <!-- Quick Demo Access (1-Click Evaluation for Hackathon Judges) -->
+      <div class="demo-login-box">
+        <div class="demo-login-header">
+          <span class="demo-login-tag">⚡ 1-CLICK DEMO ACCESS</span>
+          <span class="demo-login-hint">Select a persona to test role-based portals</span>
+        </div>
+        <div class="demo-buttons-grid">
+          <button type="button" class="demo-btn demo-btn-student" onclick="App.quickDemoLogin('student')">
+            <div class="demo-btn-icon">👨‍🎓</div>
+            <div class="demo-btn-text">
+              <div class="demo-btn-name">Student Portal</div>
+              <div class="demo-btn-desc">Aarav Sharma • CS & IT</div>
+            </div>
+            <div class="demo-btn-arrow">→</div>
+          </button>
+          
+          <button type="button" class="demo-btn demo-btn-admin" onclick="App.quickDemoLogin('admin')">
+            <div class="demo-btn-icon">🛡️</div>
+            <div class="demo-btn-text">
+              <div class="demo-btn-name">Facility Operations</div>
+              <div class="demo-btn-desc">Anita Desai • Supervisor</div>
+            </div>
+            <div class="demo-btn-arrow">→</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="login-divider">
+        <span>OR SIGN IN WITH COLLEGE CREDENTIALS</span>
+      </div>
+
+      <!-- Credentials Login Form -->
+      <form id="loginForm" onsubmit="App.handleLoginFormSubmit(event)">
+        <!-- Role Tab Selection -->
+        <div class="login-role-tabs">
+          <button type="button" class="login-tab active" id="loginTabStudent" onclick="App.setLoginRole('student')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            Student Account
+          </button>
+          <button type="button" class="login-tab" id="loginTabAdmin" onclick="App.setLoginRole('admin')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Facility Admin
+          </button>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" for="loginEmail">Campus Email</label>
+          <input 
+            type="email" 
+            id="loginEmail" 
+            class="form-control" 
+            placeholder="e.g. aarav.s@campus.edu or anita.d@campus.edu" 
+            value="aarav.s@campus.edu"
+            required 
+            autocomplete="email"
+          >
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" for="loginPassword" style="margin-bottom: 0;">Password</label>
+            <span style="font-size: 0.7rem; color: var(--text-dim);">Any password accepted for evaluation</span>
+          </div>
+          <input 
+            type="password" 
+            id="loginPassword" 
+            class="form-control" 
+            placeholder="••••••••" 
+            value="campus2026"
+            required 
+            autocomplete="current-password"
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btnLoginSubmit" style="width: 100%; justify-content: center; padding: 11px 16px; font-weight: 600; font-size: 0.9rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Sign In to CampusPulse
+        </button>
+
+        <div class="login-footer-hint">
+          <span>Deterministic multi-factor prioritization engine active. Single-sign on enabled for campus members.</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Sidebar Navigation -->
     <aside class="app-sidebar" id="appSidebar">
@@ -28,21 +129,18 @@
         </div>
       </div>
 
-      <!-- Role Switcher Control -->
-      <div class="role-switcher-card">
-        <div class="role-switcher-header">
-          <span>Active Persona</span>
-          <span id="roleLabelTag" style="color: var(--accent-cyan);">Student</span>
+      <!-- Authenticated User Profile & Role Indicator -->
+      <div class="user-session-card" id="userSessionCard">
+        <div class="user-session-header">
+          <span class="user-session-status"><span class="pulse-dot"></span> Authenticated</span>
+          <span class="user-session-role-badge" id="sessionRoleBadge">Student</span>
         </div>
-        <div class="role-pills">
-          <button type="button" class="role-pill-btn active" id="btnRoleStudent" onclick="App.switchRole('student')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-            Student
-          </button>
-          <button type="button" class="role-pill-btn" id="btnRoleAdmin" onclick="App.switchRole('admin')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Admin
-          </button>
+        <div class="user-session-body">
+          <div class="avatar-circle" id="sidebarUserAvatar">ST</div>
+          <div class="user-session-info">
+            <div class="user-session-name" id="sidebarUserName">Aarav Sharma</div>
+            <div class="user-session-dept" id="sidebarUserDept">CS & IT • Room 204</div>
+          </div>
         </div>
       </div>
 
@@ -129,11 +227,11 @@
             <span class="pulse-dot"></span>
             <span id="roleBadgeText">Student Mode</span>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="App.toggleRole()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
-            <span id="btnQuickSwitchText">Switch to Admin</span>
+          <button type="button" class="btn btn-secondary btn-sm btn-logout" id="btnLogoutTop" onclick="App.logout()" title="Sign out of CampusPulse">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span id="btnLogoutText">Log Out</span>
           </button>
-          <div class="user-profile-btn">
+          <div class="user-profile-btn" title="Logged in campus identity">
             <div class="avatar-circle" id="userAvatar">ST</div>
             <div class="user-details">
               <div class="user-name" id="userNameLabel">Aarav Sharma</div>
@@ -927,7 +1025,7 @@
           <div id="modalTicketDesc" style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem; color: var(--text-main); line-height: 1.5;"></div>
         </div>
 
-        <!-- Admin Management Controls (Visible to Admin or when toggling actions) -->
+        <!-- Admin Management Controls (Visible to Admin) -->
         <div id="modalAdminControls" style="background: var(--bg-card-subtle); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
           <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: 12px;">
             Facility Ops Actions
@@ -953,6 +1051,23 @@
             <label class="form-label" style="font-size: 0.75rem;">Add Resolution or Progress Note</label>
             <input type="text" id="modalResolutionNote" class="form-control" placeholder="e.g. Dispatched technician with replacement motor..." style="font-size: 0.82rem;">
           </div>
+        </div>
+
+        <!-- Student Community Endorsement Box (Visible to Student) -->
+        <div id="modalStudentActions" style="display: none; background: var(--bg-card-subtle); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan);">
+              Student Community Action
+            </div>
+            <span class="engine-pill" id="modalEndorseCountBadge">0 Endorsements</span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="modalEndorseHint">
+            Are you also experiencing this disruption on campus? Endorse this ticket to verify community impact and escalate its priority in the facility operations queue.
+          </p>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnModalEndorse" onclick="App.handleModalEndorse()" style="width: 100%; justify-content: center; gap: 8px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            <span id="btnModalEndorseText">Endorse This Issue (+Community Impact Boost)</span>
+          </button>
         </div>
 
         <!-- Audit Trail / Timeline -->
